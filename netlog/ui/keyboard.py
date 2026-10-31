@@ -35,9 +35,9 @@ class KeyboardInput:
                 pass
 
     def get_key(self, timeout: float = 0.0) -> Optional[str]:
-        """Poll for a single key press without blocking.
+        """Poll for a single key press or arrow sequence without blocking.
         
-        Returns the character or None if no key was pressed within timeout.
+        Returns the character/symbol ('up', 'down', etc.) or None if timeout.
         """
         if not self._is_tty:
             return None
@@ -45,7 +45,22 @@ class KeyboardInput:
         try:
             r, _, _ = select.select([sys.stdin], [], [], timeout)
             if r:
-                return sys.stdin.read(1)
+                ch = sys.stdin.read(1)
+                if ch == "\x1b":
+                    # Check for ANSI escape sequences (e.g. arrow keys)
+                    r_esc, _, _ = select.select([sys.stdin], [], [], 0.02)
+                    if r_esc:
+                        seq = sys.stdin.read(2)
+                        if seq == "[A":
+                            return "up"
+                        elif seq == "[B":
+                            return "down"
+                        elif seq == "[C":
+                            return "right"
+                        elif seq == "[D":
+                            return "left"
+                        return f"\x1b{seq}"
+                return ch
         except (OSError, select.error):
             return None
 
