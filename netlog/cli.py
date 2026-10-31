@@ -59,6 +59,18 @@ def parse_args():
         help="Stream snapshots as structured JSON lines"
     )
     parser.add_argument(
+        "--prometheus-port",
+        type=int,
+        metavar="PORT",
+        default=None,
+        help="Expose Prometheus /metrics endpoint on specified HTTP port"
+    )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run as a headless background daemon (e.g. for Prometheus scraping without TUI)"
+    )
+    parser.add_argument(
         "-v", "--version",
         action="version",
         version=f"netlog-cli {__version__}"
@@ -97,6 +109,28 @@ def main():
         dns_resolver.shutdown()
         geoip_resolver.shutdown()
         return
+
+    prom_server = None
+    if args.prometheus_port:
+        from netlog.exporters.prometheus import start_prometheus_server
+        prom_server = start_prometheus_server(
+            rate_engine,
+            port=args.prometheus_port,
+            anomaly_detector=anomaly_detector,
+            background=not args.headless
+        )
+        console.print(f"[green]✔ Prometheus exporter listening on http://0.0.0.0:{args.prometheus_port}/metrics[/green]")
+        if args.headless:
+            console.print("[cyan]Running in headless daemon mode. Press Ctrl+C to stop.[/cyan]")
+            try:
+                prom_server.serve_forever()
+            except KeyboardInterrupt:
+                console.print("\n[yellow]Headless exporter stopped cleanly.[/yellow]")
+            finally:
+                prom_server.server_close()
+                dns_resolver.shutdown()
+                geoip_resolver.shutdown()
+            return
 
     # Live Interactive Loop
     sort_modes = ["default", "pid", "process", "state", "proto"]
@@ -237,6 +271,11 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        if prom_server:
+            try:
+                prom_server.server_close()
+            except Exception:
+                pass
         dns_resolver.shutdown()
         geoip_resolver.shutdown()
         console.print("\n[bold cyan]netlog-cli stopped cleanly. Goodbye![/bold cyan]")
