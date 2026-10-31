@@ -169,6 +169,38 @@ makepkg -si
 
 ---
 
+## 🔒 Permissions & Troubleshooting
+
+`netlog` reads the kernel socket table and maps each socket back to the process that owns it. On a
+normal desktop that works without privileges. On hardened Linux distributions, sockets owned by
+other system users can be hidden from an unprivileged process, and those sockets appear as
+`System / Idle` in the dashboard instead of their real process.
+
+There are two ways to see them:
+
+### Grant the two capabilities (recommended)
+
+`netlog` needs `CAP_NET_ADMIN` (to read the socket table) and `CAP_SYS_PTRACE` (to attribute a
+socket to its owning process). Grant them to the Python interpreter instead of running as root:
+
+```bash
+sudo setcap cap_net_admin,cap_sys_ptrace=eip "$(which python3)"
+```
+
+Then run `netlog` as usual. Capabilities are cleared whenever the interpreter binary is replaced
+(for example by a Python upgrade), so re-run the command after upgrading Python.
+
+### Run with sudo
+
+If you prefer not to set capabilities, run the dashboard with `sudo netlog`. This works everywhere
+but runs the tool as root; prefer the `setcap` route when you can.
+
+If sockets still show as `System / Idle` after either option, check `kernel.yama.ptrace_scope` on
+distributions that restrict ptrace, and make sure you are not inside a container without
+`--pid=host` / `--net=host`.
+
+---
+
 ## 🧪 Running Unit Tests
 
 ```bash
