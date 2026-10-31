@@ -1,0 +1,24 @@
+[Unit]
+Description=netlog-cli Network Telemetry & Prometheus Exporter Daemon
+Documentation=https://github.com/mokshithr530/netlog-cli
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/netlog --headless --prometheus-port 9100
+Restart=on-failure
+RestartSec=5s
+KillMode=mixed
+TimeoutStopSec=10s
+
+# Sandboxing & Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=default.target
