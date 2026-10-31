@@ -38,8 +38,8 @@ def parse_args():
     parser.add_argument(
         "-n", "--rows",
         type=int,
-        default=25,
-        help="Maximum rows to display in the live table (default: 25)"
+        default=None,
+        help="Maximum rows to display in table (default: auto-detected from terminal height)"
     )
     parser.add_argument(
         "--once",
@@ -77,6 +77,13 @@ def parse_args():
     )
     return parser.parse_args()
 
+def get_effective_rows(console: Console, user_rows: Optional[int]) -> int:
+    """Computes visible table rows, auto-adapting to terminal height if unconfigured."""
+    if user_rows and user_rows > 0:
+        return user_rows
+    # Auto-detect from terminal height: subtract header (3), footer (3), and table headers (2)
+    return max(5, console.size.height - 8)
+
 def main():
     args = parse_args()
     console = Console()
@@ -98,10 +105,11 @@ def main():
             TrafficExporter.export_json(snapshot.connections, args.export_json)
             console.print(f"[green]✔ Exported {len(snapshot.connections)} records to {args.export_json}[/green]")
 
+        effective_rows = get_effective_rows(console, args.rows)
         table = create_connections_table(
             snapshot.connections,
             dns_resolver,
-            max_rows=args.rows,
+            max_rows=effective_rows,
             filter_process=args.process,
             geoip_resolver=geoip_resolver
         )
@@ -163,12 +171,13 @@ def main():
 
                 current_sort = sort_modes[sort_idx]
                 effective_filter = search_buffer if is_searching else active_filter
+                effective_rows = get_effective_rows(console, args.rows)
                 visible_conns = get_filtered_connections(
                     snapshot.connections,
                     filter_query=effective_filter,
                     sort_by=current_sort,
                 )
-                max_visible = min(len(visible_conns), args.rows)
+                max_visible = min(len(visible_conns), effective_rows)
                 if max_visible > 0:
                     selected_idx = max(0, min(selected_idx, max_visible - 1))
                 else:
@@ -254,7 +263,7 @@ def main():
                     snapshot,
                     dns_resolver,
                     filter_process=effective_filter,
-                    max_rows=args.rows,
+                    max_rows=effective_rows,
                     sort_by=current_sort,
                     is_paused=is_paused,
                     geoip_resolver=geoip_resolver,
