@@ -1,6 +1,6 @@
 # Maintainer: Mokshith Reddy <mokshithr530@gmail.com>
 pkgname=netlog-cli
-pkgver=1.0.0
+pkgver=1.1.0
 pkgrel=1
 pkgdesc="High-performance CLI network telemetry dashboard tracking socket states, live bandwidth rates, and async DNS"
 arch=('any')

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "netlog-cli"
-version = "1.0.0"
+version = "1.1.0"
 description = "High-performance CLI network telemetry dashboard tracking socket states, live bandwidth rates, and async DNS."
 readme = "README.md"
 requires-python = ">=3.9"
