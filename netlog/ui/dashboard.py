@@ -101,8 +101,8 @@ def create_connections_table(
     table.add_column("PID", justify="right", style="cyan", no_wrap=True, width=7)
     table.add_column("Process", style="bold white", width=16)
     table.add_column("Proto", justify="center", style="yellow", width=6)
-    table.add_column("Local Endpoint", style="green", width=22)
-    table.add_column("Remote Endpoint", style="bright_blue", width=22)
+    table.add_column("Local Endpoint", style="green", width=25)
+    table.add_column("Remote Endpoint", style="bright_blue", width=25)
     table.add_column("Peer / Geo", style="italic bright_white", width=26)
     table.add_column("State", justify="center", width=14)
     table.add_column("Status / Alert", style="bold red")
@@ -116,6 +116,8 @@ def create_connections_table(
             if q in c.process_name.lower()
             or q in c.remote_endpoint.lower()
             or q in c.local_endpoint.lower()
+            or (c.local_service and q in c.local_service.lower())
+            or (c.remote_service and q in c.remote_service.lower())
             or q in c.status.lower()
             or q in c.proto.lower()
             or (c.pid is not None and q in str(c.pid))
@@ -154,12 +156,15 @@ def create_connections_table(
         if len(proc_disp) > 15:
             proc_disp = proc_disp[:13] + ".."
 
+        l_endpoint = f"{conn.local_endpoint} ({conn.local_service})" if conn.local_service else conn.local_endpoint
+        r_endpoint = f"{conn.remote_endpoint} ({conn.remote_service})" if conn.remote_service and conn.raddr else conn.remote_endpoint
+
         table.add_row(
             pid_str,
             proc_disp,
             conn.proto,
-            conn.local_endpoint,
-            conn.remote_endpoint,
+            l_endpoint,
+            r_endpoint,
             peer_host,
             state_text,
             alert_text,

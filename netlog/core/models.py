@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 import time
+from netlog.core.services import get_service_name
 
 @dataclass
 class ConnectionInfo:
@@ -30,6 +31,14 @@ class ConnectionInfo:
         if not self.raddr:
             return "*:*"
         return f"{self.raddr}:{self.rport}"
+
+    @property
+    def local_service(self) -> Optional[str]:
+        return get_service_name(self.lport, self.proto)
+
+    @property
+    def remote_service(self) -> Optional[str]:
+        return get_service_name(self.rport, self.proto) if self.rport else None
 
 @dataclass
 class ProcessNetworkStats:
