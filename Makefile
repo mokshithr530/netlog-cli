@@ -1,4 +1,4 @@
-.PHONY: help install dev test lint format run docker-build docker-run clean
+.PHONY: help install dev test lint format run docker-build docker-run pkg-arch clean
 
 help:
 	@echo "netlog-cli build and development commands:"
@@ -8,6 +8,7 @@ help:
 	@echo "  make run           Launch netlog-cli dashboard locally"
 	@echo "  make docker-build  Build local Docker container image"
 	@echo "  make docker-run    Run netlog-cli inside Docker with host networking"
+	@echo "  make pkg-arch      Build Arch Linux package via makepkg"
 	@echo "  make clean         Remove build artifacts and cache files"
 
 install:
@@ -27,6 +28,9 @@ docker-build:
 
 docker-run:
 	docker run --rm -it --net=host mokshithr530/netlog-cli:latest
+
+pkg-arch:
+	cd packaging && makepkg -f
 
 clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache/

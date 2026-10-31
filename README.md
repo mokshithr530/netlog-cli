@@ -115,6 +115,41 @@ netlog --once --export-csv /tmp/network_audit.csv
 netlog --export-json /tmp/network_stream.jsonl
 ```
 
+### 6. Prometheus Metrics Exporter Mode
+Run with an embedded HTTP server exposing Prometheus `/metrics` (or headlessly as a daemon):
+```bash
+# Run with live interactive TUI and background exporter
+netlog --prometheus-port 9100
+
+# Run headlessly in the background (ideal for systemd or container agents)
+netlog --prometheus-port 9100 --headless
+```
+
+---
+
+## ⌨️ Interactive Keyboard Controls
+
+| Key | Action |
+| :--- | :--- |
+| `↑` / `↓` | Select and highlight connection row |
+| `Enter` | Open **Process Inspector Modal** (view cmdline, parent, memory RSS, socket info) |
+| `k` | **Terminate process** (prompts confirmation to send `SIGTERM`) |
+| `/` | **Live Search & Filter** (matches process name, PID, port, service name, or state) |
+| `s` | Cycle sort order (`default` → `pid` → `process` → `state` → `proto`) |
+| `p` / `Space` | Pause / resume real-time sampling |
+| `r` | Reset filters and sorting back to default |
+| `q` / `Ctrl+C` | Cleanly exit dashboard |
+
+---
+
+## 📦 Arch Linux / AUR Packaging
+
+Build and install natively on Arch Linux / Omarchy:
+```bash
+cd packaging
+makepkg -si
+```
+
 ---
 
 ## 🖥️ Sample Output
