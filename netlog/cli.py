@@ -15,6 +15,8 @@ from netlog.ui.dashboard import (
     create_connections_table,
     get_filtered_connections,
 )
+from netlog.core.models import ConnectionInfo
+from netlog.core.config import load_config
 from netlog.ui.keyboard import KeyboardInput
 from netlog.exporters.logger import TrafficExporter
 
@@ -34,6 +36,12 @@ def parse_args():
         type=str,
         default=None,
         help="Filter connections matching process name (case-insensitive substring)"
+    )
+    parser.add_argument(
+        "-c", "--config",
+        type=str,
+        default=None,
+        help="Path to custom configuration file (default: ~/.config/netlog/config.toml)"
     )
     parser.add_argument(
         "-n", "--rows",
@@ -88,6 +96,14 @@ def main():
     args = parse_args()
     console = Console()
 
+    cfg_path = Path(args.config) if args.config else None
+    cfg = load_config(cfg_path)
+
+    interval = args.interval if args.interval != 1.0 else cfg.get("interval", 1.0)
+    process_filter = args.process if args.process is not None else cfg.get("process")
+    rows_setting = args.rows if args.rows is not None else cfg.get("rows")
+    prom_port = args.prometheus_port if args.prometheus_port is not None else cfg.get("prometheus_port")
+
     rate_engine = RateCalculator()
     dns_resolver = AsyncDNSResolver()
     geoip_resolver = AsyncGeoIPResolver()
@@ -105,12 +121,12 @@ def main():
             TrafficExporter.export_json(snapshot.connections, args.export_json)
             console.print(f"[green]✔ Exported {len(snapshot.connections)} records to {args.export_json}[/green]")
 
-        effective_rows = get_effective_rows(console, args.rows)
+        effective_rows = get_effective_rows(console, rows_setting)
         table = create_connections_table(
             snapshot.connections,
             dns_resolver,
             max_rows=effective_rows,
-            filter_process=args.process,
+            filter_process=process_filter,
             geoip_resolver=geoip_resolver
         )
         console.print(table)
@@ -119,15 +135,15 @@ def main():
         return
 
     prom_server = None
-    if args.prometheus_port:
+    if prom_port:
         from netlog.exporters.prometheus import start_prometheus_server
         prom_server = start_prometheus_server(
             rate_engine,
-            port=args.prometheus_port,
+            port=prom_port,
             anomaly_detector=anomaly_detector,
             background=not args.headless
         )
-        console.print(f"[green]✔ Prometheus exporter listening on http://0.0.0.0:{args.prometheus_port}/metrics[/green]")
+        console.print(f"[green]✔ Prometheus exporter listening on http://0.0.0.0:{prom_port}/metrics[/green]")
         if args.headless:
             console.print("[cyan]Running in headless daemon mode. Press Ctrl+C to stop.[/cyan]")
             try:
@@ -142,11 +158,12 @@ def main():
 
     # Live Interactive Loop
     sort_modes = ["default", "pid", "process", "state", "proto"]
-    sort_idx = 0
+    cfg_sort = cfg.get("sort_by", "default")
+    sort_idx = sort_modes.index(cfg_sort) if cfg_sort in sort_modes else 0
     is_paused = False
     is_searching = False
     search_buffer = ""
-    active_filter = args.process
+    active_filter = process_filter
     selected_idx = 0
     is_inspecting = False
     inspect_conn = None
@@ -171,7 +188,7 @@ def main():
 
                 current_sort = sort_modes[sort_idx]
                 effective_filter = search_buffer if is_searching else active_filter
-                effective_rows = get_effective_rows(console, args.rows)
+                effective_rows = get_effective_rows(console, rows_setting)
                 visible_conns = get_filtered_connections(
                     snapshot.connections,
                     filter_query=effective_filter,
@@ -211,7 +228,7 @@ def main():
                         elif key == '\x1b':  # Escape: cancel search
                             is_searching = False
                             search_buffer = ""
-                            active_filter = args.process
+                            active_filter = process_filter
                         elif key in ('\x7f', '\x08'):  # Backspace
                             search_buffer = search_buffer[:-1]
                         elif len(key) == 1 and 32 <= ord(key) <= 126:
@@ -247,11 +264,11 @@ def main():
                             is_paused = not is_paused
                         elif key_lower == 'r':
                             sort_idx = 0
-                            active_filter = args.process
+                            active_filter = process_filter
                             search_buffer = ""
                             selected_idx = 0
 
-                if not is_paused and (now - last_sample_time >= args.interval):
+                if not is_paused and (now - last_sample_time >= interval):
                     snapshot = rate_engine.capture_snapshot()
                     anomaly_detector.inspect_connections(snapshot.connections, snapshot.processes)
 
